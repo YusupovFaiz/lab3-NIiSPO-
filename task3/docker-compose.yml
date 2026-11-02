@@ -1,0 +1,59 @@
+services:
+  app:
+    build: .
+    container_name: lab3-app-task3
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+    volumes:
+      - app_logs:/app/logs
+    depends_on:
+      - prometheus
+      - loki
+      - promtail
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: lab3-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: lab3-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: lab3-promtail
+    volumes:
+      - app_logs:/app/logs:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: lab3-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  app_logs:
